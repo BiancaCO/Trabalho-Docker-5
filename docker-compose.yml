@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # Configuração do serviço MySQL
+  mysql:
+    image: mysql:latest
+    container_name: my-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud_user
+      MYSQL_PASSWORD: nextcloud_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # Configuração do serviço MySQL para Plex
+  mysql-plex:
+    image: mysql:latest
+    container_name: my-mysql-plex
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: plex
+      MYSQL_USER: plex_user
+      MYSQL_PASSWORD: plex_password
+    volumes:
+      - mysql_plex_data:/var/lib/mysql
+
+  # Configuração do serviço NGINX
+  nginx:
+    image: nginx:latest
+    container_name: my-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d  # Mapeamento do diretório de configuração personalizada do NGINX
+      - nextcloud_data:/var/www/html  # Mapeamento para o volume compartilhado com o Nextcloud
+
+  # Configuração do serviço Nextcloud
+  nextcloud:
+    image: nextcloud:latest
+    container_name: my-nextcloud
+    depends_on:
+      - mysql  # Garante que o serviço MySQL está pronto antes de iniciar o Nextcloud
+    ports:
+      - "8080:80"
+    volumes:
+      - nextcloud_data:/var/www/html  # Mapeamento para o mesmo volume compartilhado com o NGINX
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud_user
+      - MYSQL_PASSWORD=nextcloud_password
+
+
+  # Configuração do serviço Plex
+  plex:
+    image: plexinc/pms-docker:latest
+    container_name: my-plex
+    ports:
+      - "32400:32400"
+      - "3005:3005"
+      - "8324:8324"
+      - "32469:32469"
+      - "1900:1900/udp"
+      - "32410:32410/udp"
+      - "32412:32412/udp"
+      - "32413:32413/udp"
+      - "32414:32414/udp"
+    environment:
+      - PLEX_UID=1000
+      - PLEX_GID=1000
+      - PLEX_CLAIM=""
+      - ADVERTISE_IP="http://192.168.18.172:32400/"  # IP do PC
+      - MYSQL_HOST=mysql-plex
+      - MYSQL_DATABASE=plex
+      - MYSQL_USER=plex_user
+      - MYSQL_PASSWORD=plex_password
+
+# Definição de volumes para persistência de dados
+volumes:
+  mysql_data:
+  mysql_plex_data:
+  nextcloud_data:
+   
